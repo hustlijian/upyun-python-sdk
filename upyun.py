@@ -10,8 +10,6 @@ from urllib import quote
 BASE_LIST = ['http://v%d.api.upyun.com' % i for i in range(4)]
 BASE_AUTO, BASE_TELECOM, BASE_CNC, BASE_CTT = BASE_LIST
 
-str = unicode
-
 def get_datetime():
     '''
     >>> print get_datetime()
@@ -43,7 +41,6 @@ class UpYun():
         if isinstance(uri, str):
             uri = uri.encode('utf-8')
 
-        uri = quote(uri, safe="~/") + args
 
         length = os.path.getsize(localfile)
 
@@ -62,6 +59,166 @@ class UpYun():
         response = requests.put(URL, data=mydata, headers=headers)
         print response.status_code
 
+    def get(self, uri, localfile):
+        '''
+        >>> up.get('/path/to/upyun/file', '/path/to/localfile')
+        '''
+        method = 'GET'
+        headers = {}
+        URI = '/' + self.bucket
+        if uri[0] != '/':
+            URI += '/'
+        URI += uri
+        uri = URI
+        if isinstance(uri, str):
+            uri = uri.encode('utf-8')
+        datetime = get_datetime()
+        sig = self.__get_signature(method, uri, datetime, 0)
+
+        headers['Date'] = datetime
+        headers['Authorization'] = sig
+
+        URL = self.baseurl + uri
+        response = requests.get(URL, headers=headers)
+        print response.status_code
+        fh = open(localfile, 'w')
+        fh.write(response.content)
+        fh.close()
+
+    def getfileinfo(self, uri):
+        '''
+        >>> up.getfileinfo('/path/to/upyun/file')
+        '''
+        method = 'HEAD'
+        headers = {}
+        URI = '/' + self.bucket
+        if uri[0] != '/':
+            URI += '/'
+        URI += uri
+        uri = URI
+        if isinstance(uri, str):
+            uri = uri.encode('utf-8')
+        datetime = get_datetime()
+        sig = self.__get_signature(method, uri, datetime, 0)
+
+        headers['Date'] = datetime
+        headers['Authorization'] = sig
+
+        URL = self.baseurl + uri
+        response = requests.head(URL, headers=headers)
+        print response.status_code
+        info = response.headers.items()
+        print info
+        res = dict(iter([(k[8:].lower(), v) for k, v in info 
+                    if k[:8].lower() == 'x-upyun-']))
+        print res
+        return res
+
+    def delete(self, uri):
+        '''
+        >>> up.delete('/path/to/upyun/file')
+        >>> up.delete(('/path/to/upyun/dirctory')
+        '''
+        method = 'DELETE'
+        headers = {}
+        URI = '/' + self.bucket
+        if uri[0] != '/':
+            URI += '/'
+        URI += uri
+        uri = URI
+        if isinstance(uri, str):
+            uri = uri.encode('utf-8')
+        datetime = get_datetime()
+        sig = self.__get_signature(method, uri, datetime, 0)
+
+        headers['Date'] = datetime
+        headers['Authorization'] = sig
+
+        URL = self.baseurl + uri
+        response = requests.delete(URL, headers=headers)
+        print response.status_code
+
+    def mkdir(self, uri):
+        '''
+        >>> up.mkdir('/path/to/new/upyun/dirctory')
+        '''
+        method = 'POST'
+        headers = {}
+        headers['folder']= 'true'
+        headers['mkdir']= 'true'
+        URI = '/' + self.bucket
+        if uri[0] != '/':
+            URI += '/'
+        URI += uri
+        uri = URI
+        if isinstance(uri, str):
+            uri = uri.encode('utf-8')
+        datetime = get_datetime()
+        sig = self.__get_signature(method, uri, datetime, 0)
+
+        headers['Date'] = datetime
+        headers['Authorization'] = sig
+
+        URL = self.baseurl + uri
+        response = requests.post(URL, headers=headers)
+        print response.status_code
+
+    def getlist(self, uri='/'):
+        '''
+        >>> up.getlist()
+        >>> up.getlist(uri='/newdir')
+        '''
+        method = 'GET'
+        headers = {}
+        URI = '/' + self.bucket
+        if uri[0] != '/':
+            URI += '/'
+        URI += uri
+        uri = URI
+        if isinstance(uri, str):
+            uri = uri.encode('utf-8')
+        datetime = get_datetime()
+        sig = self.__get_signature(method, uri, datetime, 0)
+
+        headers['Date'] = datetime
+        headers['Authorization'] = sig
+
+        URL = self.baseurl + uri
+        response = requests.get(URL, headers=headers)
+        print response.status_code
+        content = response.content
+        items = content.split('\n')
+        res = [dict(zip(['name', 'type', 'size', 'time'],
+                x.split('\t'))) for x in items]
+        return res
+
+    def usage(self):
+        '''
+        >>> up.usage()
+        '''
+        args = '?usage'
+        method = 'GET'
+        headers = {}
+        uri = '/'
+        URI = '/' + self.bucket
+        URI += uri
+        uri = URI
+        if isinstance(uri, str):
+            uri = uri.encode('utf-8')
+        uri = quote(uri, safe="~/") + args
+        datetime = get_datetime()
+        sig = self.__get_signature(method, uri, datetime, 0)
+
+        headers['Date'] = datetime
+        headers['Authorization'] = sig
+
+        URL = self.baseurl + uri
+        response = requests.get(URL, headers=headers)
+        print response.status_code
+
+        res = response.content
+        print res
+
     def __get_signature(self, method, uri, date, length):
         sigstr = '&'.join([method, uri, date, str(length), self.passwd])
         sig = hashlib.md5(sigstr).hexdigest()
@@ -72,5 +229,10 @@ class UpYun():
 if __name__ == '__main__':
     #print get_datetime()
     up = UpYun('cli-bucket', 'lijian', 'qwerasdf')
-    up.put('./README.md', 'readme.txt')
-    pass
+    #up.put('./README.md', 'readme.txt')
+    #up.get('readme.txt', './readme.txt')
+    #up.getfileinfo('readme.txt')
+    #up.delete('readme.txt')
+    #up.mkdir('/newdir/')
+    #up.getlist()
+    up.usage()

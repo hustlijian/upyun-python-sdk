@@ -56,7 +56,7 @@ class UpYun():
         #response = requests.Session().request(method,URL, files=files, headers=headers)
         fh = open(localfile, 'rb')
         mydata = fh.read()
-        response = requests.put(URL, data=mydata, headers=headers)
+        response = requests.put(URL, data=mydata, headers=headers, timeout=self.timeout)
         print response.status_code
 
     def get(self, uri, localfile):
@@ -79,7 +79,7 @@ class UpYun():
         headers['Authorization'] = sig
 
         URL = self.baseurl + uri
-        response = requests.get(URL, headers=headers)
+        response = requests.get(URL, headers=headers, timeout=self.timeout)
         print response.status_code
         fh = open(localfile, 'w')
         fh.write(response.content)
@@ -105,10 +105,9 @@ class UpYun():
         headers['Authorization'] = sig
 
         URL = self.baseurl + uri
-        response = requests.head(URL, headers=headers)
+        response = requests.head(URL, headers=headers, timeout=self.timeout)
         print response.status_code
         info = response.headers.items()
-        print info
         res = dict(iter([(k[8:].lower(), v) for k, v in info 
                     if k[:8].lower() == 'x-upyun-']))
         print res
@@ -135,7 +134,7 @@ class UpYun():
         headers['Authorization'] = sig
 
         URL = self.baseurl + uri
-        response = requests.delete(URL, headers=headers)
+        response = requests.delete(URL, headers=headers, timeout=self.timeout)
         print response.status_code
 
     def mkdir(self, uri):
@@ -160,7 +159,7 @@ class UpYun():
         headers['Authorization'] = sig
 
         URL = self.baseurl + uri
-        response = requests.post(URL, headers=headers)
+        response = requests.post(URL, headers=headers, timeout=self.timeout)
         print response.status_code
 
     def getlist(self, uri='/'):
@@ -184,12 +183,15 @@ class UpYun():
         headers['Authorization'] = sig
 
         URL = self.baseurl + uri
-        response = requests.get(URL, headers=headers)
+        response = requests.get(URL, headers=headers, timeout=self.timeout)
         print response.status_code
         content = response.content
         items = content.split('\n')
         res = [dict(zip(['name', 'type', 'size', 'time'],
                 x.split('\t'))) for x in items]
+        for i in res:
+            print '%10s %2s %10s %10s'%(i['name'], i['type'], i['size'], i['time'])
+        print ''
         return res
 
     def usage(self):
@@ -213,16 +215,15 @@ class UpYun():
         headers['Authorization'] = sig
 
         URL = self.baseurl + uri
-        response = requests.get(URL, headers=headers)
+        response = requests.get(URL, headers=headers, timeout=self.timeout)
         print response.status_code
 
         res = response.content
-        print res
+        return res
 
     def __get_signature(self, method, uri, date, length):
         sigstr = '&'.join([method, uri, date, str(length), self.passwd])
         sig = hashlib.md5(sigstr).hexdigest()
-        print 'sig: '+sig
         return 'UpYun ' + self.user + ':' + sig
 
 

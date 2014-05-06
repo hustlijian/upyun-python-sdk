@@ -10,7 +10,7 @@
 
 #效果
 
-![demo picture ](http://upyun.gitcafe.com/hustlijian/cli-for-UPYUN/raw/master/demo.gif)    
+![demo picture ](https://raw.githubusercontent.com/hustlijian/upyun-python-sdk/master/demo.gif)    
 
 #依赖
 

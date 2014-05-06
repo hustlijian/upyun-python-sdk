@@ -3,8 +3,8 @@
 
 import os
 import argparse
-import readline
 import sys
+import cmd
 import upyun
 
 BASE = {}
@@ -44,114 +44,97 @@ def parse_command_line():
 
     return parser.parse_args()
 
-class UpyunShell(object):
-    def __init__(self, upyun):
+class Shell(cmd.Cmd):
+    '''
+    upyun shell 
+    '''
+    def cmdloop(self, upyun, intro=None):
+        self.prompt = '(upyun)-> '
         self.upyun = upyun
+        return cmd.Cmd.cmdloop(self, intro)
 
-        self.upyun_commands = {
-            'put': self.put,
-            'get': self.get,
-            'getinfo': self.getinfo,
-            'delete': self.delete,
-            'mkdir': self.mkdir,
-            'getlist': self.getlist,
-            'usage': self.usage,
-        }
-        self.shell_commands = {
-            #'cd': self.set_path,
-            #'ls': self.list_local,
-            'help': self.help,
-            '?': self.help,
-            'quit': self.exit,
-        }
+    def do_shell(self, line):
+        '''
+        run some shell command
+        '''
+        output = os.popen(line).read()
+        print output
 
-        self.commands = dict(
-            self.upyun_commands.items() + self.shell_commands.items())
-        self.path = os.getcwd()
+    def do_put(self, args):
+        '''
+        put LOCALFILE DEST_URI
+        put localfile to dest uri
+        '''
+        args = args.split()
+        self.upyun.put(args[0], args[1]) 
 
-        self.init_readline()
-
-    def init_readline(self):
-        upyunsh_dir = os.path.join(os.path.expanduser('~'), '.upyunshell/')
-        if not os.path.isdir(upyunsh_dir):
-            os.mkdir(upyunsh_dir)
-
-        self.history_file = os.path.join(upyunsh_dir, '.history')
-
-        try:
-            readline.read_history_file(self.history_file)
-        except IOError:
-            pass
-
-        readline.set_completer(self.complete)
-        readline.parse_and_bind('tab: complete')
-
-    def put(self, args):
-       self.upyun.put(args[0], args[1]) 
-
-    def get(self, args):
+    def do_get(self, args):
+        '''
+        get SRC_URI LOCALFILE
+        get uri file to localfile
+        '''
+        args = args.split()
         self.upyun.get(args[0], args[1])
 
-    def getinfo(self, args):
+    def do_getinfo(self, args):
+        '''
+        getinfo URI
+        get information of uri
+        '''
+        args = args.split()
         self.upyun.getfileinfo(args[0])
 
-    def delete(self, args):
+    def do_delete(self, args):
+        '''
+        delete URI
+        delete a uri of file or dirctory
+        '''
+        args = args.split()
         self.upyun.delete(args[0])
 
-    def mkdir(self, args):
+    def do_mkdir(self, args):
+        '''
+        mkdir NEWDIR_URI
+        make a new dirctory
+        '''
+        args = args.split()
         self.upyun.mkdir(args[0])
 
-    def getlist(self, args):
-        self.upyun.getlist(args[0])
+    def do_getlist(self, args):
+        '''
+        getlist [URI]
+        get list of uri 
+        '''
+        if args:
+            args = args.split()
+            self.upyun.getlist(args[0])
+        else:
+            self.upyun.getlist('/')
 
-    def usage(self, args):
-        self.upyun.usage()
+    def do_usage(self, args):
+        '''
+        usage
+        get the total usage space
+        '''
+        args = args.split()
+        print self.upyun.usage()
 
-    def help(self, args):
-        print 'invalid command:'
-        for i in self.commands.keys():
-            print '%6s'%i,
-        print ''
-    
-    def exit(self, args):
-       readline.write_history_file(self.history_file) 
-       sys.exit(0)
+    def do_exit(self, args):
+        '''
+        exit shell
+        '''
+        return True
 
-    def complete(self, text, state):
-        match = [s for s in self.commands.keys() if s
-            and s.startswith(text)] + [None]
-        return match[state]
-
-    def prompt(self):
-        #return '[UpyunShell@%s] > ' %(self.path)
-        return 'upyun $ '
-
-    def input_loop(self):
-        command = None
-        while True:
-            try:
-                input = raw_input(self.prompt()).split()
-                
-                # ignore blank input
-                if not input or len(input) == 0:
-                    continue
-
-                command = input.pop(0).lower()
-                if command in self.commands:
-                    try:
-                        self.commands[command](input[:])
-                    except Exception as e:
-                        print 'command error %s'%e
-                else:
-                    self.help(input[:])
-            except (EOFError, KeyboardInterrupt):
-                break
+    def do_EOF(self, args):
+        '''
+        exit shell (ctrl+d)
+        '''
+        return True
 
 def main():
     args = parse_command_line()
     up = upyun.UpYun(args.bucket, args.user, args.passwd, timeout=args.timeout, baseurl=(args.baseurl and BASE[args.baseurl]))
-    shell = UpyunShell(up)
-    shell.input_loop()
+    Shell().cmdloop(up,intro='Welcome to upyun shell\n'+'-'*50)
 
 def upyun_test():
     up = upyun.UpYun(BUCKET_NAME, USERNAME, PASSWD)
